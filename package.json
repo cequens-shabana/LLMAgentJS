@@ -1,5 +1,5 @@
 {
   "dependencies": {
-    "langchain": "^0.0.59"
+    "langchain": "^0.0.63"
   }
 }
