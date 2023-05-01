@@ -8,6 +8,7 @@
 import { Command } from "https://deno.land/x/cliffy/command/mod.ts";
 import { existsSync } from "https://deno.land/std@0.170.0/fs/exists.ts";
 
+import { lc_run } from "./lc_agent.ts";
 import { callLLM, dummyLLM } from "./lib/llm.ts";
 
 console.log("Starting......");
@@ -44,6 +45,7 @@ const cli = new Command()
       history.push({ role: "human", content: input });
       let response = await callLLM(history, options.persona_id);
       // let response = await dummyLLM(history, options.persona_id);
+      // let response = await lc_run(history, options.persona_id);
       // check if console log level is debug
       response = JSON.stringify(response);
       console.debug("CLI response: ", response);

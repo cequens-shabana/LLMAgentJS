@@ -36,6 +36,7 @@ async function callLLM(history: object[], persona_id: number): Promise<string> {
     console.log("***************************************");
     console.log("chat_messages: ", chat_messages);
     console.log("***************************************");
+    // below line to suspend the process for sake of debugging 
     const input = await Deno.readTextFile("/dev/stdin");
   }
   // console.debug("callLLM() LLM response: ", response.text);

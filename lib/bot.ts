@@ -5,6 +5,15 @@ import {
   HumanChatMessage,
   SystemChatMessage,
 } from "langchain/schema";
+import { BaseChatMemory, BufferMemory } from "langchain/memory";
+import {
+  AgentAction,
+  AgentFinish,
+  AgentStep,
+  InputValues,
+  PartialValues,
+} from "langchain/schema";
+
 import { cequens_types } from "./types.ts";
 import { connect } from "https://deno.land/x/redis/mod.ts";
 import Ajv from "https://cdn.skypack.dev/ajv";
@@ -32,6 +41,54 @@ export class Bot {
       hostname: config.redis.hostname,
       port: config.redis.port,
     });
+  }
+
+  async lc_convert_history_to_chat_messages(
+    history: any,
+  ): Promise<BufferMemory> {
+    console.log("new_convert_history_to_chat_messages history", history);
+    let memory = new BufferMemory();
+    var has_system_prompt = false;
+    for (const message of history) {
+      console.log("<< < << << a history_message", message);
+      switch (message.role) {
+        case "user":
+          memory.chatHistory.addUserMessage(message.content);
+          break;
+        case "assistant":
+          memory.chatHistory.addAIChatMessage(message.content);
+          break;
+        case "system":
+          memory.chatHistory.addAIChatMessage(message.content);
+          has_system_prompt = true;
+          break;
+      }
+    }
+    let x = await memory.chatHistory.getMessages();
+    console.log("&&&&&&&&&&&&&", x);
+    if (!has_system_prompt) {
+      console.log(
+        "inside bot.ts new_convert_history_to_chat_messages !has_system_prompt",
+      );
+      console.log("Insert system prompt");
+      // We have to insert the system prompt at the start of the chat
+      let system_prompt = `Act as a professional flight agent`;
+      let newMem = new BufferMemory();
+      newMem.chatHistory.addAIChatMessage(system_prompt);
+      let memory_messages = await memory.chatHistory.getMessages();
+      memory_messages.forEach((m) => {
+        // "human" | "ai" | "generic" | "system"
+        if (m._getType() === "human") {
+          newMem.chatHistory.addUserMessage(m.text);
+        } else {
+          newMem.chatHistory.addAIChatMessage(m.text);
+        }
+      });
+      console.log("newMem", newMem);
+      return newMem;
+    }
+    console.log("memory", memory);
+    return memory;
   }
 
   async convert_history_to_chat_messages(
@@ -184,7 +241,8 @@ export class Bot {
   }
 
   async callTool(query: any): Promise<{}> {
-    let tool_name = query["Tool_Name"];
+    let tool_name = query["Tool_Name"] || query["Action"];
+    console.log("inside callTool tool_name: ", tool_name);
     const tool = await this.getTool(tool_name);
     if (!tool) {
       return { "error": "Tool not found" };
