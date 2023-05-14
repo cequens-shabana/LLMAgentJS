@@ -32,7 +32,7 @@ async function callLLM(
   }
   let agent = new CAgent(config, persona_id);
   const chat = new ChatOpenAI({
-    temperature: 0.7,
+    temperature: 0,
     modelName: "gpt-4", /*, maxTokens: 8000*/
   });
   const user = await agent.getUser();
@@ -57,6 +57,9 @@ async function callLLM(
   try {
     response = await chat.call(chat_messages);
     console.log(`[DEBUG] [Executor] LLM response: ${JSON.stringify(response)}`);
+    if (isToolInvokation) {
+      return response.text; // TODO remove anything after new line
+    }
   } catch (e) {
     console.error("Error calling chat: ", e);
     console.log("***************************************");
@@ -65,10 +68,13 @@ async function callLLM(
     return "LLM_FAILED";
   }
   let responseObect = {};
-  let isJson = true;
+  // let isJson = true;
   // parse response as JSON
   try {
     responseObect = await JSONParse(response.text);
+    if (responseObect.hasOwnProperty('status') && responseObect.status === 'FAIED') {
+      return response.text;
+    }
     console.log(
       `[Trace] [Executor] [callLLM()] responseObect after JSONParse -> ${
         JSON.stringify(responseObect)
@@ -82,13 +88,14 @@ async function callLLM(
 
   let responseOutput = await agent.getResponse(responseObect);
   console.log("[Debug] [Executor] [callLLM] responseOutput: ", responseOutput);
-  if (isJson && agent.isTool(responseObect)) {
-    if (isToolInvokation) {
-      console.log(
-        "[Trace] [Executor] [callLLM] Max allowed tool iteration reached",
-      );
-      return JSON.stringify(responseOutput);
-    }
+  if (/*isJson && */agent.isTool(responseObect)) {
+    console.log("[Debug] [Executor] [callLLM] Entering agent.isTool to invoke tool ");
+    // if (isToolInvokation) {
+    //   console.log(
+    //     "[Trace] [Executor] [callLLM] Max allowed tool iteration reached",
+    //   );
+    //   return JSON.stringify(responseOutput);
+    // }
     let _tool_output = JSON.stringify(await agent.callTool(responseObect));
     console.log("[Debug] [Executor] [callLLM] Tool output: ", _tool_output);
     if (
@@ -140,6 +147,8 @@ async function JSONParse(o: string | object): Promise<any> {
 }
 
 // let output = await JSONParse(`{\n  \"Tool_Name\": \"api_flightSearch\",\n  \"provided_info\": {\n    \"departure_date\": \"tomorrow\",\n    \"from_city\": \"CAI\",\n    \"to_city\": \"JED\"\n  },\n  \"Conditions_met\": true,\n  \"Tool_probability\": 100\n}\n\nThank you for providing the information. Please hold on while I check our information system for available flights from CAI to JED tomorrow."}`);
+// let j = `{\n  \"Tool_Name\": \"api_flightSearch\",\n  \"provided_info\": {\n    \"departure_date\": \"Sun May 14 2023\",\n    \"from_city\": \"CAI\",\n    \"to_city\": \"JED\"\n  },\n  \"Conditions_met\": true,\n  \"Tool_probability\": 100\n}\n\nPlease hold on while I check our information system for available flights from CAI to JED today."}`;
+// let output = await JSONParse(j);
 // console.log("*************************");
 // console.log("output: ", output);
 // console.log("*************************");
