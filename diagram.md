@@ -46,7 +46,6 @@ erDiagram
     }
 ```
 
-
 ```mermaid
 sequenceDiagram
     participant user
@@ -74,5 +73,5 @@ sequenceDiagram
     tool->>agent: list of available flights as json
     agent->>llm: list of available flights as json
     llm->>agent: list of available flights as a human response 
-    agent->>user:list of available flights as a human response 
+    agent->>user:list of available flights as a human response
 ```

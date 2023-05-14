@@ -9,9 +9,9 @@ import { Command } from "https://deno.land/x/cliffy/command/mod.ts";
 import { existsSync } from "https://deno.land/std@0.170.0/fs/exists.ts";
 
 import { lc_run } from "./lc_agent.ts";
-import { callLLM, dummyLLM } from "./lib/llm.ts";
+import { callLLM, dummyLLM } from "./lib/agentExecutor.ts";
 
-console.log("Starting......");
+console.log("CLI Starting......");
 const cli = new Command()
   .version("0.1.0")
   .description("Get history from a persona")
@@ -33,17 +33,16 @@ const cli = new Command()
     );
     // take all the history except the last one
     history.pop();
-    console.log(history);
+    //console.log(history);
     // The main cli loop
     while (true) {
-      // console.log("history: ", history);
       // take input from user cli stop when user press enter
       console.log("Please enter your input and press ctrl+d to submit: ");
       const input = await Deno.readTextFile("/dev/stdin");
       console.log("input: ", input);
       // add the input to history
       history.push({ role: "human", content: input });
-      let response = await callLLM(history, options.persona_id);
+      let response = await callLLM([{ role: "human", content: input }], options.persona_id);
       // let response = await dummyLLM(history, options.persona_id);
       // let response = await lc_run(history, options.persona_id);
       // check if console log level is debug

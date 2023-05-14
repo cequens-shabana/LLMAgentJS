@@ -22,7 +22,7 @@ const ajv = new Ajv();
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export class Bot {
+export class CAgent {
   public chat: ChatOpenAI;
   public redis: any;
   public persona_id: number;
@@ -31,9 +31,11 @@ export class Bot {
   public tool_schema: {};
 
   constructor(config: any, persona_id: number) {
-    this.chat = new ChatOpenAI({ temperature: 1, modelName: "gpt-4" });
+    this.chat = new ChatOpenAI({ temperature: 0.3, modelName: "gpt-4" });
     this.InitRedis(config);
     this.persona_id = persona_id;
+    this.invocation_count = 0;
+    this.max_invocation_count = 1;
   }
 
   async InitRedis(config) {
@@ -43,6 +45,44 @@ export class Bot {
     });
   }
 
+  async getResponse(responseObect: any): Promise<string> {
+    let key: string;
+    let redisResponse: any;
+    // console.log("[DEBUG] [CAgent] inside cequens Agent getResponse");
+    // console.log("[DEBUG] responseObect from LLM", responseObect);
+
+    try {
+      redisResponse = JSON.parse(
+        await this.redis.get(
+          `master_prompt:${this.persona_id}`,
+        ),
+      );
+      key = redisResponse.output_response_key;
+    } catch (e) {
+      console.log(
+        "Failed to parse agent master prompt for output_response_key !!!",
+        e,
+      );
+      console.log("Seeem agent not configured correctly");
+      return "Failed";
+    }
+    // console.log("[DEBUG] [CAgent] key", key);
+    // console.log("[DEBUG] [CAgent] redisResponse", redisResponse);
+    // console.log("[DEBUG] [CAgent] redisResponse[key]", responseObect[key]);
+    if (responseObect.hasOwnProperty(key)) {
+      return responseObect[key];
+    }
+    console.log(
+      "[Exception] [CAgent] getResposne()  Key not found in response object");
+      const regex = new RegExp(`"${key}"\\s*:\\s*"([^"]*)"`);
+      const match = JSON.stringify(responseObect).match(regex);
+      if (match) {
+        return match[1];
+      }
+      return responseObect;
+  }
+
+  // This is for langchain agent try "Failed" As applying 2 Agents make it miss
   async lc_convert_history_to_chat_messages(
     history: any,
   ): Promise<BufferMemory> {
@@ -93,10 +133,12 @@ export class Bot {
 
   async convert_history_to_chat_messages(
     history: any,
-  ): BaseChatMessage[] {
-    const chat_messages = [];
+  ): Promise<BaseChatMessage[]> {
+    const chat_messages: BaseChatMessage[] = [];
     var has_system_prompt = false;
     for (const message of history) {
+      console.log("-------------- [Trace] [CAgent] convert_history message.role", message.role);
+      console.log("-------------- [Trace] [CAgent] convert_history message.content", message.content);
       switch (message.role) {
         case "human":
           chat_messages.push(new HumanChatMessage(message.content));
@@ -112,10 +154,13 @@ export class Bot {
     }
     if (!has_system_prompt) {
       // We have to insert the system prompt at the start of the chat
-      let msg = await this.buildSystemTemplate();
-      chat_messages.unshift(new SystemChatMessage(msg));
+      let m = await this.buildSystemTemplate();
+      let msg = {'content': m, 'role': 'system'};
+      chat_messages.unshift(new SystemChatMessage(msg.content));
+      // console.log("[Debug] [CAgent] system prompt -> \n", msg);
     }
-    return chat_messages;
+    // console.log(`[Trace] [CAgent] convert_history_to_chat_messages chat_messages ${JSON.stringify(chat_messages)}`);
+    return chat_messages as BaseChatMessage[];
   }
 
   async getPersona(): Promise<cequens_types.IPersona> {
@@ -224,8 +269,8 @@ export class Bot {
 
   isTool(obj: {}): boolean {
     const ajv = new Ajv();
-    console.log("inside isTool obj: ", obj);
-    console.log("inside isTool this.tool_schema: ", this.tool_schema);
+    // console.log("inside isTool obj: ", obj);
+    // console.log("inside isTool this.tool_schema: ", this.tool_schema);
     return ajv.validate(this.tool_schema, obj);
   }
 
@@ -242,14 +287,14 @@ export class Bot {
 
   async callTool(query: any): Promise<{}> {
     let tool_name = query["Tool_Name"] || query["Action"];
-    console.log("inside callTool tool_name: ", tool_name);
+    console.log("[Trace] [CAgent] inside callTool tool_name: ", tool_name);
     const tool = await this.getTool(tool_name);
     if (!tool) {
       return { "error": "Tool not found" };
     }
     // console.log("inside callTool tool: ", tool);
     let jscode = tool?.func;
-    console.log("inside callTool jscode: ", jscode);
+    console.log("[Debug] [CAgent] callTool() extracted tool code: ", jscode);
     const dynamicFunction = eval(`(${jscode})`);
     const result = dynamicFunction(query.provided_info);
     // // define a vaiable called code as a callback
