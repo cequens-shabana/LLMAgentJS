@@ -150,6 +150,8 @@ export class CAgent {
           chat_messages.push(new SystemChatMessage(message.content));
           has_system_prompt = true;
           break;
+        default: 
+          console.log("-------------- [Trace] [CAgent] convert_history message.role", message.role);
       }
     }
     if (!has_system_prompt) {

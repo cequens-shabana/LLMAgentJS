@@ -2,8 +2,13 @@ import { ChatOpenAI } from "langchain/chat_models/openai";
 import { CAgent } from "./CAgent.ts";
 import { callTool, isTool, LLMAugmentedJsonParse } from "./tool.ts";
 //TODO: add logging lib and make it read from config and pass this lib to agent
-import { log } from "https://deno.land/std/log/mod.ts";
 import { cequens_types } from "./types.ts";
+import {
+  AIChatMessage,
+  BaseChatMessage,
+  HumanChatMessage,
+  SystemChatMessage,
+} from "langchain/schema";
 
 const config = {
   "redis": {
@@ -19,8 +24,10 @@ async function callLLM(
 ): Promise<string> {
   console.log("Starting callLLM()");
   if (isToolInvokation) {
-    console.log("[INFO] [callLLM] Recurse call to make LLM parse tool response");
-  }else{
+    console.log(
+      "[INFO] [callLLM] Recurse call to make LLM parse tool response",
+    );
+  } else {
     console.log("[INFO] [callLLM] New call request... ");
   }
   let agent = new CAgent(config, persona_id);
@@ -49,23 +56,19 @@ async function callLLM(
   // CALL LLM
   try {
     response = await chat.call(chat_messages);
-    console.log("[DEBUG] [Executor] LLM response: ", response);
+    console.log(`[DEBUG] [Executor] LLM response: ${JSON.stringify(response)}`);
   } catch (e) {
     console.error("Error calling chat: ", e);
     console.log("***************************************");
     console.log("chat_messages: ", chat_messages);
     console.log("***************************************");
     return "LLM_FAILED";
-    // below line to suspend the process for sake of debugging
-    //const input = await Deno.readTextFile("/dev/stdin");
   }
-  // console.debug("callLLM() LLM response: ", response.text);
-  // Try to parse response as JSON
   let responseObect = {};
   let isJson = true;
   // parse response as JSON
   try {
-    responseObect = JSONParse(response.text);
+    responseObect = await JSONParse(response.text);
     console.log(
       `[Trace] [Executor] [callLLM()] responseObect after JSONParse -> ${
         JSON.stringify(responseObect)
@@ -73,23 +76,17 @@ async function callLLM(
     );
   } catch (e) {
     console.log(e);
+    console.log("LLM_JSONPARSE_FAILED");
+    return response;
   }
-  if (typeof responseObect !== "object") {
-    console.warn("Failed to do json parse trying LLMAugmentedJsonParse");
-    // responseObect = LLMAugmentedJsonParse(response.text);
-    console.warn(`responseObect from LLMAugmented -> ${responseObect}`);
-  }
+
   let responseOutput = await agent.getResponse(responseObect);
   console.log("[Debug] [Executor] [callLLM] responseOutput: ", responseOutput);
-  // console.log(
-  //   "if (isJson && agent.isTool(responseObect))",
-  //   isJson && agent.isTool(responseObect),
-  // );
-  // console.log("isJson: ", isJson);
-  // console.log("agent.isTool(responseObect): ", await agent.isTool(responseObect));
   if (isJson && agent.isTool(responseObect)) {
     if (isToolInvokation) {
-      console.log("[Trace] [Executor] [callLLM] Max allowed tool iteration reached");
+      console.log(
+        "[Trace] [Executor] [callLLM] Max allowed tool iteration reached",
+      );
       return JSON.stringify(responseOutput);
     }
     let _tool_output = JSON.stringify(await agent.callTool(responseObect));
@@ -111,20 +108,41 @@ async function callLLM(
   return JSON.stringify(responseOutput);
 }
 
-function JSONParse(o: string | object): any {
+async function JSONParse(o: string | object): Promise<any> {
   if (typeof o === "string") {
     console.log("[Trace] [Executor] JSONParse() o is string");
     try {
       return JSON.parse(o);
     } catch (e) {
       console.log(
-        "[Error] [Executor] JSONParse() o is string but failed to parse as JSON will try to do LLMAugmentedJsonParse",
+        "[Error] [Executor] JSONParse() o is string but failed to parse as JSON will try to do LLMAugmentedJsonParse"
       );
+      let template = `you are a smart assistant who able to fix json 
+
+      and just reply with the proper json without explanation and if not able just reply with FAIED`;
+
+      const chat = new ChatOpenAI({ temperature: 0 });
+
+      const res = await chat.call([
+        new SystemChatMessage(template),
+        new HumanChatMessage(o),
+      ]);
+      
+      let result: string = res.text;
+      console.dir(res);
+      console.log(`LLM Augmented json parse result -> ${res}`);
+      if (result == "FAILED") {
+        return { "status": "FAILED" };
+      }
+      return JSON.parse(result);
     }
-    console.log("JSONParse() o is object typeof o: ", typeof o);
-    return o;
   }
 }
+
+// let output = await JSONParse(`{\n  \"Tool_Name\": \"api_flightSearch\",\n  \"provided_info\": {\n    \"departure_date\": \"tomorrow\",\n    \"from_city\": \"CAI\",\n    \"to_city\": \"JED\"\n  },\n  \"Conditions_met\": true,\n  \"Tool_probability\": 100\n}\n\nThank you for providing the information. Please hold on while I check our information system for available flights from CAI to JED tomorrow."}`);
+// console.log("*************************");
+// console.log("output: ", output);
+// console.log("*************************");
 
 async function dummyLLM(
   history: object[],

@@ -4,7 +4,7 @@
     "role": "user"
   },
   {
-    "content": "{\"your_response_message\": \"Hello! How can I help you today?\", \"how_you_made_your_decisions\": \"I greeted the customer and asked how I can assist them.\"}",
+    "content": "Hello! How can I help you today?",
     "role": "assistant"
   },
   {
@@ -12,7 +12,7 @@
     "role": "user"
   },
   {
-    "content": "{\"your_response_message\": \"Sure, I can help you with that. Please provide me with the departure date for your flight.\",\"how_you_made_your_decisions\": \"I identified that the customer wants to book a flight, so I asked for the departure date to proceed with the booking process\"}",
+    "content": "Sure, I can help you with that. Please provide me with the departure date for your flight",
     "role": "assistant"
   },
   {

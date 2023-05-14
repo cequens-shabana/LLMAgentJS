@@ -42,7 +42,7 @@ const cli = new Command()
       console.log("input: ", input);
       // add the input to history
       history.push({ role: "human", content: input });
-      let response = await callLLM([{ role: "human", content: input }], options.persona_id);
+      let response = await callLLM(history, options.persona_id);
       // let response = await dummyLLM(history, options.persona_id);
       // let response = await lc_run(history, options.persona_id);
       // check if console log level is debug
