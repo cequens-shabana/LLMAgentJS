@@ -17,6 +17,7 @@ import {
 import { cequens_types } from "./types.ts";
 import { connect } from "https://deno.land/x/redis/mod.ts";
 import Ajv from "https://cdn.skypack.dev/ajv";
+import { LLMAugmentedHumanReply } from "./utils.ts";
 
 const ajv = new Ajv();
 
@@ -48,8 +49,6 @@ export class CAgent {
   async getResponse(responseObect: any): Promise<string> {
     let key: string;
     let redisResponse: any;
-    // console.log("[DEBUG] [CAgent] inside cequens Agent getResponse");
-    // console.log("[DEBUG] responseObect from LLM", responseObect);
 
     try {
       redisResponse = JSON.parse(
@@ -64,7 +63,8 @@ export class CAgent {
         e,
       );
       console.log("Seeem agent not configured correctly");
-      return "Failed";
+      return LLMAugmentedHumanReply(responseObect);
+      // return "Failed";
     }
     // console.log("[DEBUG] [CAgent] key", key);
     // console.log("[DEBUG] [CAgent] redisResponse", redisResponse);
@@ -73,13 +73,14 @@ export class CAgent {
       return responseObect[key];
     }
     console.log(
-      "[Exception] [CAgent] getResposne()  Key not found in response object");
-      const regex = new RegExp(`"${key}"\\s*:\\s*"([^"]*)"`);
-      const match = JSON.stringify(responseObect).match(regex);
-      if (match) {
-        return match[1];
-      }
-      return responseObect;
+      "[Exception] [CAgent] getResposne()  Key not found in response object",
+    );
+    const regex = new RegExp(`"${key}"\\s*:\\s*"([^"]*)"`);
+    const match = JSON.stringify(responseObect).match(regex);
+    if (match) {
+      return match[1];
+    }
+    return responseObect;
   }
 
   // This is for langchain agent try "Failed" As applying 2 Agents make it miss
@@ -137,8 +138,14 @@ export class CAgent {
     const chat_messages: BaseChatMessage[] = [];
     var has_system_prompt = false;
     for (const message of history) {
-      console.log("-------------- [Trace] [CAgent] convert_history message.role", message.role);
-      console.log("-------------- [Trace] [CAgent] convert_history message.content", message.content);
+      console.log(
+        "-------------- [Trace] [CAgent] convert_history message.role",
+        message.role,
+      );
+      console.log(
+        "-------------- [Trace] [CAgent] convert_history message.content",
+        message.content,
+      );
       switch (message.role) {
         case "human":
           chat_messages.push(new HumanChatMessage(message.content));
@@ -150,14 +157,17 @@ export class CAgent {
           chat_messages.push(new SystemChatMessage(message.content));
           has_system_prompt = true;
           break;
-        default: 
-          console.log("-------------- [Trace] [CAgent] convert_history message.role", message.role);
+        default:
+          console.log(
+            "-------------- [Trace] [CAgent] convert_history message.role",
+            message.role,
+          );
       }
     }
     if (!has_system_prompt) {
       // We have to insert the system prompt at the start of the chat
       let m = await this.buildSystemTemplate();
-      let msg = {'content': m, 'role': 'system'};
+      let msg = { "content": m, "role": "system" };
       chat_messages.unshift(new SystemChatMessage(msg.content));
       // console.log("[Debug] [CAgent] system prompt -> \n", msg);
     }

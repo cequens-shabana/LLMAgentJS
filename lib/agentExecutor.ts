@@ -1,6 +1,10 @@
 import { ChatOpenAI } from "langchain/chat_models/openai";
 import { CAgent } from "./CAgent.ts";
-import { callTool, isTool, LLMAugmentedJsonParse } from "./tool.ts";
+import {
+  LLMAugmentedHumanReply,
+  LLMAugmentedJsonParse,
+  LLMAugmentedJsonTruncate,
+} from "./utils.ts";
 //TODO: add logging lib and make it read from config and pass this lib to agent
 import { cequens_types } from "./types.ts";
 import {
@@ -58,7 +62,7 @@ async function callLLM(
     response = await chat.call(chat_messages);
     console.log(`[DEBUG] [Executor] LLM response: ${JSON.stringify(response)}`);
     if (isToolInvokation) {
-      return response.text; // TODO remove anything after new line
+      return await LLMAugmentedJsonTruncate(response.text); // The LLMAugmentedHumaan reply may be used
     }
   } catch (e) {
     console.error("Error calling chat: ", e);
@@ -72,7 +76,9 @@ async function callLLM(
   // parse response as JSON
   try {
     responseObect = await JSONParse(response.text);
-    if (responseObect.hasOwnProperty('status') && responseObect.status === 'FAIED') {
+    if (
+      responseObect.hasOwnProperty("status") && responseObect.status === "FAIED"
+    ) {
       return response.text;
     }
     console.log(
@@ -88,8 +94,10 @@ async function callLLM(
 
   let responseOutput = await agent.getResponse(responseObect);
   console.log("[Debug] [Executor] [callLLM] responseOutput: ", responseOutput);
-  if (/*isJson && */agent.isTool(responseObect)) {
-    console.log("[Debug] [Executor] [callLLM] Entering agent.isTool to invoke tool ");
+  if (/*isJson && */ agent.isTool(responseObect)) {
+    console.log(
+      "[Debug] [Executor] [callLLM] Entering agent.isTool to invoke tool ",
+    );
     // if (isToolInvokation) {
     //   console.log(
     //     "[Trace] [Executor] [callLLM] Max allowed tool iteration reached",
@@ -103,12 +111,18 @@ async function callLLM(
       _tool_output === ""
     ) {
       _tool_output = "{'Status': 'Error', 'Error': 'Tool invocation failed'}";
+    } else {
+      _tool_output = await LLMAugmentedJsonTruncate(_tool_output);
+      // _tool_output = await LLMAugmentedHumanReply(_tool_output);
     }
     console.log(
       "[Debug] [Executor] [callLLM] After check Tool output: ",
       _tool_output,
     );
-    history.push({ content: "Tool Response: " + _tool_output, role: "assistant" });
+    history.push({
+      content: "Tool Response: " + _tool_output,
+      role: "assistant",
+    });
 
     return callLLM(history, persona_id, isToolInvokation = true); // recursive call Here we can add max tool recursion request
   }
@@ -122,36 +136,12 @@ async function JSONParse(o: string | object): Promise<any> {
       return JSON.parse(o);
     } catch (e) {
       console.log(
-        "[Error] [Executor] JSONParse() o is string but failed to parse as JSON will try to do LLMAugmentedJsonParse"
+        "[Error] [Executor] JSONParse() o is string but failed to parse as JSON will try to do LLMAugmentedJsonParse",
       );
-      let template = `you are a smart assistant who able to fix json 
-
-      and just reply with the proper json without explanation and if not able just reply with FAIED`;
-
-      const chat = new ChatOpenAI({ temperature: 0 });
-
-      const res = await chat.call([
-        new SystemChatMessage(template),
-        new HumanChatMessage(o),
-      ]);
-      
-      let result: string = res.text;
-      console.dir(res);
-      console.log(`LLM Augmented json parse result -> ${res}`);
-      if (result == "FAILED") {
-        return { "status": "FAILED" };
-      }
-      return JSON.parse(result);
+      return LLMAugmentedJsonParse(o);
     }
   }
 }
-
-// let output = await JSONParse(`{\n  \"Tool_Name\": \"api_flightSearch\",\n  \"provided_info\": {\n    \"departure_date\": \"tomorrow\",\n    \"from_city\": \"CAI\",\n    \"to_city\": \"JED\"\n  },\n  \"Conditions_met\": true,\n  \"Tool_probability\": 100\n}\n\nThank you for providing the information. Please hold on while I check our information system for available flights from CAI to JED tomorrow."}`);
-// let j = `{\n  \"Tool_Name\": \"api_flightSearch\",\n  \"provided_info\": {\n    \"departure_date\": \"Sun May 14 2023\",\n    \"from_city\": \"CAI\",\n    \"to_city\": \"JED\"\n  },\n  \"Conditions_met\": true,\n  \"Tool_probability\": 100\n}\n\nPlease hold on while I check our information system for available flights from CAI to JED today."}`;
-// let output = await JSONParse(j);
-// console.log("*************************");
-// console.log("output: ", output);
-// console.log("*************************");
 
 async function dummyLLM(
   history: object[],
