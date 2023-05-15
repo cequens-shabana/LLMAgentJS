@@ -150,6 +150,9 @@ export class CAgent {
         case "human":
           chat_messages.push(new HumanChatMessage(message.content));
           break;
+        case "user":
+          chat_messages.push(new HumanChatMessage(message.content));
+          break;
         case "assistant":
           chat_messages.push(new AIChatMessage(message.content));
           break;
@@ -159,7 +162,7 @@ export class CAgent {
           break;
         default:
           console.log(
-            "-------------- [Trace] [CAgent] convert_history message.role",
+            "-------------- [ERR] [CAgent] FAILED convert_history message.role",
             message.role,
           );
       }
