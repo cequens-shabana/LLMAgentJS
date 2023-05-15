@@ -58,52 +58,28 @@ async function callLLM(
   // console.log(`[Debug] [Executor] chat_messages to be submitted to LLM:\n ${chat_messages} \n`);
   let response;
   // CALL LLM
-  try {
-    response = await chat.call(chat_messages);
-    console.log(`[DEBUG] [Executor] LLM response: ${JSON.stringify(response)}`);
-    if (isToolInvokation) {
-      return await LLMAugmentedJsonTruncate(response.text); // The LLMAugmentedHumaan reply may be used
-    }
-  } catch (e) {
-    console.error("Error calling chat: ", e);
-    console.log("***************************************");
-    console.log("chat_messages: ", chat_messages);
-    console.log("***************************************");
-    return "LLM_FAILED";
+  response = await chat.call(chat_messages);
+  console.log(`[DEBUG] [Executor] LLM response: ${JSON.stringify(response)}`);
+  if (isToolInvokation) {
+    return await LLMAugmentedJsonTruncate(response.text); // The LLMAugmentedHumaan reply may be used
   }
   let responseObect = {};
-  // let isJson = true;
-  // parse response as JSON
-  try {
-    responseObect = await JSONParse(response.text);
-    if (
-      responseObect.hasOwnProperty("status") && responseObect.status === "FAIED"
-    ) {
-      return response.text;
-    }
-    console.log(
-      `[Trace] [Executor] [callLLM()] responseObect after JSONParse -> ${
-        JSON.stringify(responseObect)
-      }`,
-    );
-  } catch (e) {
-    console.log(e);
-    console.log("LLM_JSONPARSE_FAILED");
-    return response;
-  }
+
+  responseObect = await JSONParse(response.text);
+
+  console.log(
+    `[Trace] [Executor] [callLLM()] responseObect after JSONParse -> ${
+      JSON.stringify(responseObect)
+    }`,
+  );
 
   let responseOutput = await agent.getResponse(responseObect);
   console.log("[Debug] [Executor] [callLLM] responseOutput: ", responseOutput);
-  if (/*isJson && */ agent.isTool(responseObect)) {
+  if (agent.isTool(responseObect)) {
     console.log(
       "[Debug] [Executor] [callLLM] Entering agent.isTool to invoke tool ",
     );
-    // if (isToolInvokation) {
-    //   console.log(
-    //     "[Trace] [Executor] [callLLM] Max allowed tool iteration reached",
-    //   );
-    //   return JSON.stringify(responseOutput);
-    // }
+
     let _tool_output = JSON.stringify(await agent.callTool(responseObect));
     console.log("[Debug] [Executor] [callLLM] Tool output: ", _tool_output);
     if (
@@ -111,9 +87,6 @@ async function callLLM(
       _tool_output === ""
     ) {
       _tool_output = "{'Status': 'Error', 'Error': 'Tool invocation failed'}";
-    } else {
-      _tool_output = await LLMAugmentedJsonTruncate(_tool_output);
-      // _tool_output = await LLMAugmentedHumanReply(_tool_output);
     }
     console.log(
       "[Debug] [Executor] [callLLM] After check Tool output: ",
@@ -126,7 +99,7 @@ async function callLLM(
 
     return callLLM(history, persona_id, isToolInvokation = true); // recursive call Here we can add max tool recursion request
   }
-  return JSON.stringify(responseOutput);
+  return LLMAugmentedHumanReply(JSON.stringify(responseOutput));
 }
 
 async function JSONParse(o: string | object): Promise<any> {
