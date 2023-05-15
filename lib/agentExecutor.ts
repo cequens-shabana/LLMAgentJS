@@ -108,7 +108,7 @@ async function callLLM(
       "[Debug] [Executor] [callLLM] After check Tool output: ",
       _tool_output,
     );
-    history.push({ content: _tool_output, role: "assistant" });
+    history.push({ content: "Tool Response: " + _tool_output, role: "assistant" });
 
     return callLLM(history, persona_id, isToolInvokation = true); // recursive call Here we can add max tool recursion request
   }
