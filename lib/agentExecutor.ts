@@ -69,7 +69,11 @@ async function callLLM(
   let responseObect = {};
   /******* Pasre LLM output as a json if possible *********/
   // responseObect = await JSONParse(response.text);
-  responseObect = await JSON.parse(response.text.replace(/\n/g, '').replace );
+  try {
+    responseObect = await JSON.parse(response.text.replace(/\n/g, "").replace);
+  } catch (e) {
+    return `response returned as it is as it failed to be parsed as a json \n LLM Response -> ${response.text}`;
+  }
 
   console.log(
     `[Trace] [Executor] [callLLM()] responseObect after JSONParse -> ${
@@ -109,7 +113,6 @@ async function callLLM(
     });
 
     return callLLM(history, persona_id, isToolInvokation = true); // recursive call Here we can add max tool recursion request
-
   }
   // return NewLLMAugmentedHumanReply(JSON.stringify(responseOutput));
   return JSON.stringify(responseOutput);
