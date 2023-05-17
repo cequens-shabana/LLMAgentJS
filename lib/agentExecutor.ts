@@ -4,6 +4,8 @@ import {
   LLMAugmentedHumanReply,
   LLMAugmentedJsonParse,
   LLMAugmentedJsonTruncate,
+  NewLLMAugmentedHumanReply,
+  NewLLMAugmentedJsonTruncate,
 } from "./utils.ts";
 //TODO: add logging lib and make it read from config and pass this lib to agent
 import { cequens_types } from "./types.ts";
@@ -37,7 +39,7 @@ async function callLLM(
   let agent = new CAgent(config, persona_id);
   const chat = new ChatOpenAI({
     temperature: 0,
-    modelName: "gpt-4", /*, maxTokens: 8000*/
+    modelName: "gpt-4", /*, modelName: "gpt-3.5-turbo" | maxTokens: 8000*/
   });
   const user = await agent.getUser();
 
@@ -57,49 +59,60 @@ async function callLLM(
   );
   // console.log(`[Debug] [Executor] chat_messages to be submitted to LLM:\n ${chat_messages} \n`);
   let response;
-  // CALL LLM
+  /******* CALL LLM *********/
   response = await chat.call(chat_messages);
   console.log(`[DEBUG] [Executor] LLM response: ${JSON.stringify(response)}`);
-  if (isToolInvokation) {
-    return await LLMAugmentedJsonTruncate(response.text); // The LLMAugmentedHumaan reply may be used
+  if (isToolInvokation) { // If this was a recursive call to parse tool response
+    // return await NewLLMAugmentedJsonTruncate(response.text); // The LLMAugmentedHumaan reply may be used
+    return response.text;
   }
   let responseObect = {};
-
-  responseObect = await JSONParse(response.text);
+  /******* Pasre LLM output as a json if possible *********/
+  // responseObect = await JSONParse(response.text);
+  responseObect = await JSON.parse(response.text.replace(/\n/g, '').replace );
 
   console.log(
     `[Trace] [Executor] [callLLM()] responseObect after JSONParse -> ${
       JSON.stringify(responseObect)
     }`,
   );
-
+  /******* Extract Response section if possible *********/
   let responseOutput = await agent.getResponse(responseObect);
   console.log("[Debug] [Executor] [callLLM] responseOutput: ", responseOutput);
+  /******* Check if the LLM response is a Tool call invocation request *********/
   if (agent.isTool(responseObect)) {
     console.log(
-      "[Debug] [Executor] [callLLM] Entering agent.isTool to invoke tool ",
+      "[Debug] [Executor] [callLLM] Seem this response isTool request ",
     );
-
-    let _tool_output = JSON.stringify(await agent.callTool(responseObect));
-    console.log("[Debug] [Executor] [callLLM] Tool output: ", _tool_output);
-    if (
-      _tool_output === undefined || Object.keys(_tool_output).length === 0 ||
-      _tool_output === ""
-    ) {
-      _tool_output = "{'Status': 'Error', 'Error': 'Tool invocation failed'}";
+    /******* Try to parse Tool output *********/
+    let tool_response = await agent.callTool(responseObect);
+    try {
+      /*Try to parse the tool response as a json*/
+      tool_response = JSON.stringify(tool_response);
+    } catch (e) {
+      console.log("[Debug] [Executor] [callLLM] Tool response is not a json");
+      return tool_response as string;
     }
+    console.log("[Debug] [Executor] [callLLM] Tool output: ", tool_response);
+
     console.log(
       "[Debug] [Executor] [callLLM] After check Tool output: ",
-      _tool_output,
+      tool_response,
     );
     history.push({
-      content: "Tool Response: " + _tool_output,
+      content: JSON.stringify(responseObect),
+      role: "assistant",
+    });
+    history.push({
+      content: `Tool Response is : """\n ${tool_response} \n"""`,
       role: "assistant",
     });
 
     return callLLM(history, persona_id, isToolInvokation = true); // recursive call Here we can add max tool recursion request
+
   }
-  return LLMAugmentedHumanReply(JSON.stringify(responseOutput));
+  // return NewLLMAugmentedHumanReply(JSON.stringify(responseOutput));
+  return JSON.stringify(responseOutput);
 }
 
 async function JSONParse(o: string | object): Promise<any> {

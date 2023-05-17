@@ -28,11 +28,12 @@ const cli = new Command()
       return;
     }
 
-    const history = JSON.parse(
+    let history = JSON.parse(
       await Deno.readTextFile(options.history_json_file),
     );
     // take all the history except the last one
     history.pop();
+    history = [] ;
     //console.log(history);
     // The main cli loop
     while (true) {
@@ -46,8 +47,8 @@ const cli = new Command()
       // let response = await dummyLLM(history, options.persona_id);
       // let response = await lc_run(history, options.persona_id);
       // check if console log level is debug
-      response = JSON.stringify(response);
-      console.debug("CLI response: ", response);
+      // response = JSON.stringify(response);
+      console.debug(`\n\n\n${new Date().toLocaleString()} CLI response: ${response}\n\n\n`);
       // add the response to history
       history.push({ role: "assistant", content: response });
     }

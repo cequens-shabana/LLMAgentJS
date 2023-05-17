@@ -32,7 +32,7 @@ export class CAgent {
   public tool_schema: {};
 
   constructor(config: any, persona_id: number) {
-    this.chat = new ChatOpenAI({ temperature: 0.3, modelName: "gpt-4" });
+    this.chat = new ChatOpenAI({ temperature: 0.3 /*, modelName: "gpt-4"*/ });
     this.InitRedis(config);
     this.persona_id = persona_id;
     this.invocation_count = 0;
@@ -212,18 +212,19 @@ export class CAgent {
     return master_prompt;
   }
   // has to be getTools and has to get keys then itrate over them and get all tools
-  async getTools(persona_id: number): Promise<cequens_types.ITool[]> {
+  async getTools(): Promise<cequens_types.ITool[]> {
     let tools: cequens_types.ITool[] = [];
     const tools_keys: string[] = await this.redis.keys(
-      `tool:${persona_id}:*`,
+      `tool:${this.persona_id}:*`,
     );
     this.tools_keys = tools_keys;
     //console.log("******tools keys: ", `tool:${tools_keys}`);
     for (const key of tools_keys) {
-      const tool: cequens_types.ITool = JSON.parse(await this.redis.get(key));
+      let out = await this.redis.get(key);
+      // console.log("******getTools out redis: ", out);
+      const tool: cequens_types.ITool = JSON.parse(out);
       tools.push(tool);
     }
-    //console.log("******tools: ", tools)
     return tools;
   }
 
@@ -256,7 +257,7 @@ export class CAgent {
     );
     const master_prompt = master.prompt;
     //console.log("master: ", master);
-    const tools = await this.getTools(persona.id);
+    const tools = await this.getTools();
     const toolString = tools.map((tool) =>
       `${tool.name_for_model} | ${tool.description_for_model} | ${tool.prerequisites}`
     ).join("\n");
@@ -302,7 +303,7 @@ export class CAgent {
 
   async callTool(query: any): Promise<{}> {
     let tool_name = query["Tool_Name"] || query["Action"];
-    console.log("[Trace] [CAgent] inside callTool tool_name: ", tool_name);
+    console.log(`[Trace] [CAgent] inside callTool tool_name: ${tool_name} input query: ${JSON.stringify(query)}`)  ;  
     const tool = await this.getTool(tool_name);
     if (!tool) {
       return { "error": "Tool not found" };
@@ -310,13 +311,20 @@ export class CAgent {
     // console.log("inside callTool tool: ", tool);
     let jscode = tool?.func;
     console.log("[Debug] [CAgent] callTool() extracted tool code: ", jscode);
-    const dynamicFunction = eval(`(${jscode})`);
-    const result = dynamicFunction(query.provided_info);
-    // // define a vaiable called code as a callback
-    // let code = new Function(jscode)();
-    // console.log(  "----- let code = new Function(jscode)();");
-    // // call the callback
-    // let result = code(query.provided_info);
-    return result;
+    try {
+      const dynamicFunction = eval(`(${jscode})`);
+      const result = await dynamicFunction(`${query.provided_info}`);
+      console.log(
+        "[Debug] [CAgent] callTool() result for dyncamicFunction exec: ",
+        result,
+      );
+      return result;
+    } catch (e) {
+      console.log("[Error] [CAgent] callTool() failed to invoke tool: ", e);
+      return {
+        "error":
+          `Tool code is not valid , Failed to invoke the tool ${tool_name}(${query.provided_info})`,
+      };
+    }
   }
 }
