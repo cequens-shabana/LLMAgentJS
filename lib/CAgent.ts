@@ -17,7 +17,7 @@ import {
 import { cequens_types } from "./types.ts";
 import { connect } from "https://deno.land/x/redis/mod.ts";
 import Ajv from "https://cdn.skypack.dev/ajv";
-import { LLMAugmentedHumanReply } from "./utils.ts";
+import { LLMAugmentedHumanReply, NewLLMAugmentedHumanReply } from "./utils.ts";
 
 const ajv = new Ajv();
 
@@ -63,7 +63,7 @@ export class CAgent {
         e,
       );
       console.log("Seeem agent not configured correctly");
-      return LLMAugmentedHumanReply(responseObect);
+      return NewLLMAugmentedHumanReply(responseObect);
       // return "Failed";
     }
     // console.log("[DEBUG] [CAgent] key", key);

@@ -60,17 +60,23 @@ async function callLLM(
   // console.log(`[Debug] [Executor] chat_messages to be submitted to LLM:\n ${chat_messages} \n`);
   let response;
   /******* CALL LLM *********/
+  console.log(
+    `[Trace] [Executor] Calling LLM @ ${new Date().toLocaleString()}`,
+  );
   response = await chat.call(chat_messages);
+  console.log(
+    `[Trace] [Executor] LLM Responsd @ ${new Date().toLocaleString()}`,
+  );
   console.log(`[DEBUG] [Executor] LLM response: ${JSON.stringify(response)}`);
   if (isToolInvokation) { // If this was a recursive call to parse tool response
     // return await NewLLMAugmentedJsonTruncate(response.text); // The LLMAugmentedHumaan reply may be used
-    return response.text;
+    return agent.getResponse(response.text);
   }
   let responseObect = {};
   /******* Pasre LLM output as a json if possible *********/
   // responseObect = await JSONParse(response.text);
   try {
-    responseObect = await JSON.parse(response.text.replace(/\n/g, "").replace);
+    responseObect = await JSON.parse(response.text.replace(/\n/g, ""));
   } catch (e) {
     return `response returned as it is as it failed to be parsed as a json \n LLM Response -> ${response.text}`;
   }
@@ -114,7 +120,9 @@ async function callLLM(
 
     return callLLM(history, persona_id, isToolInvokation = true); // recursive call Here we can add max tool recursion request
   }
+  // Below section is for that response is not a tool request and it is a response for a user
   // return NewLLMAugmentedHumanReply(JSON.stringify(responseOutput));
+
   return JSON.stringify(responseOutput);
 }
 
