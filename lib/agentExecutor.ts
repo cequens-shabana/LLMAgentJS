@@ -70,13 +70,17 @@ async function callLLM(
   console.log(`[DEBUG] [Executor] LLM response: ${JSON.stringify(response)}`);
   if (isToolInvokation) { // If this was a recursive call to parse tool response
     // return await NewLLMAugmentedJsonTruncate(response.text); // The LLMAugmentedHumaan reply may be used
-    return agent.getResponse(response.text);
+    try {
+      return agent.getResponse(JSON.parse(response.text.replace(/\n/g, "")));
+    } catch (e) {
+      return response.text;
+    }
   }
   let responseObect = {};
   /******* Pasre LLM output as a json if possible *********/
   // responseObect = await JSONParse(response.text);
   try {
-    responseObect = await JSON.parse(response.text.replace(/\n/g, ""));
+    responseObect = JSON.parse(response.text.replace(/\n/g, ""));
   } catch (e) {
     return `response returned as it is as it failed to be parsed as a json \n LLM Response -> ${response.text}`;
   }

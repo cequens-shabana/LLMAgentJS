@@ -73,7 +73,7 @@ export class CAgent {
       return responseObect[key];
     }
     console.log(
-      "[Exception] [CAgent] getResposne()  Key not found in response object",
+      `[Exception] [CAgent] getResposne()  Key (${key}) not found in response object (${responseObect})`,
     );
     const regex = new RegExp(`"${key}"\\s*:\\s*"([^"]*)"`);
     const match = JSON.stringify(responseObect).match(regex);
