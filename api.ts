@@ -16,6 +16,6 @@ router.post("/api", async (ctx) => {
 app.use(router.routes());
 app.use(router.allowedMethods());
 
-console.log("Server running on port 3000");
+console.log("Server running on port 3325");
 
-await app.listen({ port: 3000 });
+await app.listen({ port: 3325 });

@@ -30,27 +30,30 @@ await sleep(4);
 
 const x = await agent.getTools();
 // console.log(x);
-try {
-  const result = await agent.callTool(
-    {
-      Tool_Name: "get_movie_rate",
-      provided_info:
-        "Suggest 3 of the highest rated movie for me to watch today",
-    },
-  );
-  console.log(result);
-} catch (e) {
-  console.log("------------------- Error -------------------");
-  console.log(e);
-}
+//try {
+//  const result = await agent.callTool(
+//    {
+//      Tool_Name: "get_movie_rate",
+//      provided_info:
+//        "Suggest 3 of the highest rated movie for me to watch today",
+//    },
+//  );
+//  console.log(result);
+//} catch (e) {
+//  console.log("------------------- Error -------------------");
+//  console.log(e);
+//}
 
-console.log("Testing a cinema search tool");
+// "open_new_ticket","m":true,"provided_info":"I have issue with sending sms for ksa, for mobily"
+// cequens_new_features
+
+console.log("Testing the tool");
 try {
   const result = await agent.callTool(
     {
-      Tool_Name: "cinema_movies_search",
+      Tool_Name: "cequens_new_features",
       provided_info:
-        "list today available movies",
+        "Tell me more about what is new in cequens",
     },
   );
   console.log(result);

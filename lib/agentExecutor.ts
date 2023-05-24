@@ -82,7 +82,8 @@ async function callLLM(
   try {
     responseObect = JSON.parse(response.text.replace(/\n/g, ""));
   } catch (e) {
-    return `response returned as it is as it failed to be parsed as a json \n LLM Response -> ${response.text}`;
+    //return `response returned as it is as it failed to be parsed as a json \n LLM Response -> ${response.text}`;
+    return `${response.text}`;
   }
 
   console.log(
