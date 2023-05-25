@@ -30,6 +30,8 @@ export class CAgent {
   public tools_keys: string[];
   public master_prompt_id: number;
   public tool_schema: {};
+  public max_iterations: number =1 ;
+  public response_key: string;
 
   constructor(config: any, persona_id: number) {
     this.chat = new ChatOpenAI({ temperature: 0.3 /*, modelName: "gpt-4"*/ });
@@ -44,38 +46,38 @@ export class CAgent {
       hostname: config.redis.hostname,
       port: config.redis.port,
     });
+    this.response_key = await JSON.parse( await this.redis.get(`master_prompt:${this.persona_id}`)).output_response_key ;
   }
 
   async getResponse(responseObect: any): Promise<string> {
-    let key: string;
     let redisResponse: any;
 
-    try {
-      redisResponse = JSON.parse(
-        await this.redis.get(
-          `master_prompt:${this.persona_id}`,
-        ),
-      );
-      key = redisResponse.output_response_key;
-    } catch (e) {
-      console.log(
-        "Failed to parse agent master prompt for output_response_key !!!",
-        e,
-      );
-      console.log("Seeem agent not configured correctly");
-      return NewLLMAugmentedHumanReply(responseObect);
-      // return "Failed";
-    }
-    // console.log("[DEBUG] [CAgent] key", key);
-    // console.log("[DEBUG] [CAgent] redisResponse", redisResponse);
-    // console.log("[DEBUG] [CAgent] redisResponse[key]", responseObect[key]);
-    if (responseObect.hasOwnProperty(key)) {
-      return responseObect[key];
+    // try {
+    //   redisResponse = JSON.parse(
+    //     await this.redis.get(
+    //       `master_prompt:${this.persona_id}`,
+    //     ),
+    //   );
+    //   key = redisResponse.output_response_key;
+    // } catch (e) {
+    //   console.log(
+    //     "Failed to parse agent master prompt for output_response_key !!!",
+    //     e,
+    //   );
+    //   console.log("Seeem agent not configured correctly");
+    //   return NewLLMAugmentedHumanReply(responseObect);
+    //   // return "Failed";
+    // }
+    // // console.log("[DEBUG] [CAgent] key", key);
+    // // console.log("[DEBUG] [CAgent] redisResponse", redisResponse);
+    // // console.log("[DEBUG] [CAgent] redisResponse[key]", responseObect[key]);
+    if (responseObect.hasOwnProperty(this.response_key)) {
+      return responseObect[this.response_key];
     }
     console.log(
-      `[Exception] [CAgent] getResposne()  Key (${key}) not found in response object (${responseObect})`,
+      `[Exception] [CAgent] getResposne()  Key (${this.response_key}) not found in response object (${responseObect})`,
     );
-    const regex = new RegExp(`"${key}"\\s*:\\s*"([^"]*)"`);
+    const regex = new RegExp(`"${this.response_key}"\\s*:\\s*"([^"]*)"`);
     const match = JSON.stringify(responseObect).match(regex);
     if (match) {
       return match[1];

@@ -10,6 +10,7 @@ import { existsSync } from "https://deno.land/std@0.170.0/fs/exists.ts";
 
 import { lc_run } from "./lc_agent.ts";
 import { callLLM, dummyLLM } from "./lib/agentExecutor.ts";
+import { Execute }  from "./lib/CAgentExecutor.ts";
 
 console.log("CLI Starting......");
 const cli = new Command()
@@ -43,7 +44,7 @@ const cli = new Command()
       console.log("input: ", input);
       // add the input to history
       history.push({ role: "human", content: input });
-      let response = await callLLM(history, options.persona_id);
+      let response = await Execute(history, options.persona_id,0);
       // let response = await dummyLLM(history, options.persona_id);
       // let response = await lc_run(history, options.persona_id);
       // check if console log level is debug

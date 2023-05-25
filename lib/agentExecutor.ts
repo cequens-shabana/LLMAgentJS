@@ -48,6 +48,9 @@ async function callLLM(
       new Date().toLocaleString()
     } INFO - Starting new request for user ${user.id} using persona ${persona_id}`,
   );
+
+
+  
   //   const systemTemplate = await agent.buildSystemTemplate(persona_id);
   const chat_messages = await agent.convert_history_to_chat_messages(
     history,

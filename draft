@@ -1,0 +1,15 @@
+# two paths will explore 
+    a. Old python code base (brain concept)
+    b.Use langchain as usual as below 
+
+# in this run , I want to create a custom agent called cequens based on chat agent
+https://github.com/hwchase17/langchainjs/blob/b45313c854/langchain/src/tools/dynamic.ts
+
+# to get dynamic code from json object 
+```js
+const json = '{"result":true, "count":42, "code": "function(x) { console.log(`this is me ${x}`); }"}';
+const obj = JSON.parse(json);
+obj.code = eval(`(${obj.code})`);
+obj.code("x");
+```
+
