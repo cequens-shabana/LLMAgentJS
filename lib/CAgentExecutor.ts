@@ -8,7 +8,6 @@ import {
 } from "./utils.ts";
 import { CAgent } from "./CAgent.ts";
 
-
 const config = {
   "redis": {
     "hostname": "127.0.0.1",
@@ -130,8 +129,8 @@ export async function Execute(
         new Date().toLocaleString()
       }] [ERR] [AgentExecutor] Invalid Response with JSON Try to do LLMAugmented Json parse`,
     );
-    reply_to_user = LLMAugmentedJsonParse(response.text);
-    if (isInvalidJSONResposne(reply_to_user)) {
+    let llm_reply_to_user = await LLMAugmentedJsonParse(response.text);
+    if (isInvalidJSONResposne(llm_reply_to_user)) {
       // This mean no way this could be parsed as json
       console.log(
         `[${id}] [${
