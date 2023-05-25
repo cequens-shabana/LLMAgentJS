@@ -1,5 +1,5 @@
 import { Application, Router } from "https://deno.land/x/oak/mod.ts";
-import { callLLM } from "./lib/agentExecutor.ts";
+import { Execute }  from "./lib/CAgentExecutor.ts";
 
 const app = new Application();
 const router = new Router();
@@ -10,7 +10,7 @@ router.post("/api", async (ctx) => {
   console.log("New request for history -> ", history);
   // do something with persona_id and history
 
-  ctx.response.body = await callLLM(history, persona_id);
+  ctx.response.body = await Execute(history, persona_id, 0);
 });
 
 app.use(router.routes());
